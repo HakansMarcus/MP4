@@ -15,7 +15,7 @@ public class ShapeContainer extends JPanel implements Pointable
     INSERT, MOVE, DELETE, MARK, UNMARK, RESIZE
     };
 
-  private Mode  mode = Mode.INSERT;
+  private ModeState currentMode = new InsertModeState(shapes, this);;
   private Shape selected;
   
   public ShapeContainer()
@@ -42,7 +42,7 @@ public class ShapeContainer extends JPanel implements Pointable
 
     }
 
-  private void select(Point point)
+  public void select(Point point)
     {
     for (Shape shape : shapes)
       {
@@ -54,49 +54,17 @@ public class ShapeContainer extends JPanel implements Pointable
       }
     }
 
+    public Shape getSelected() {
+      return selected;
+    }
+
+    public void setSelected(Shape selected) {
+      this.selected = selected;
+    }
+
   public void pointerDown(Point point)
     {
-    if (mode == Mode.INSERT)
-      {
-      shapes.add(new Circle(point, Math.random() * 50.0));
-      repaint(); // uppmanar swing att måla om
-      }
-    else if (mode == Mode.MOVE)
-      select(point);
-    else if (mode == Mode.DELETE)
-      {
-      select(point);
-      if (selected != null)
-        shapes.remove(selected);
-      selected = null;
-      repaint(); // uppmanar swing att måla om
-      }
-    else if (mode == Mode.MARK)
-      {
-      select(point);
-      if(selected != null)
-        {
-        Shape markedShape = new ShapeDecorator(selected);
-        shapes.remove(selected);
-        shapes.add(markedShape);
-        repaint();
-        }
-      }
-    else if (mode == Mode.UNMARK)
-      {
-      select(point);
-      if(selected != null)
-        {
-        Shape unmarkedShape = selected.peel();
-        shapes.remove(selected);
-        shapes.add(unmarkedShape);
-        repaint();
-        }
-      }
-    else if (mode == Mode.RESIZE)
-      {
-      select(point);
-      }
+    currentMode.pointerDown(point);
     }
 
   public void pointerUp(Point point)
@@ -106,23 +74,34 @@ public class ShapeContainer extends JPanel implements Pointable
 
   public void pointerMoved(Point point, boolean pointerDown)
     {
-    if (selected != null && pointerDown)
-      {
-      if (mode == Mode.MOVE)
-        {
-        selected.moveTo(point);
-        repaint(); // uppmanar swing att måla om
-        }
-      else if(mode == Mode.RESIZE)
-        {
-        selected.resizeTo(point);
-        repaint();
-        }      
-      }
+    if (selected != null && pointerDown) {
+      currentMode.pointerMoved(point);
+    }
     }
 
   public void setMode(Mode mode)
     {
-    this.mode = mode;
+    switch (mode) {
+      case INSERT:
+        currentMode = new InsertModeState(shapes, this);
+        break;
+      case MOVE:
+        currentMode = new MoveModeState(this);
+        break;
+      case DELETE:
+        currentMode = new DeleteModeState(shapes, this);
+        break;
+      case MARK:
+        currentMode = new MarkModeState(shapes, this);
+        break;
+      case UNMARK:
+        currentMode = new UnmarkModeState(shapes, this);
+        break;
+      case RESIZE:
+        currentMode = new ResizeModeState(this);
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid mode");
+    }
     }
   }
